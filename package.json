@@ -4,6 +4,7 @@
   "description": "",
   "main": "module.1.js",
   "dependencies": {
+    "jQuery": "^1.7.4",
     "jsdom": "^11.0.0",
     "moment": "^2.18.1",
     "request": "^2.81.0",
