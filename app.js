@@ -1,12 +1,13 @@
 var request = require('request-promise');
 var moment = require('moment');
 var _ = require("underscore");
-// var $ = require('jQuery');
-const { JSDOM } = require("jsdom");
+var htmlParser = require('./html_parser');
+var csvWriter = require('./csv_writer');
 
-var formData = {
+const { JSDOM } = require("jsdom");
+const formData = {
     gameId: 3,
-    drawId: 142,
+    drawId: 9999,
     dayPrize: moment(),
     type: 0,
 };
@@ -23,7 +24,7 @@ function getNumbers(request, data, result) {
     };
     request(options)
         .then(function(body) {
-            onFulfill(body, data);
+            onFulfill(body);
         })
         .catch(onReject);
 }
@@ -32,45 +33,28 @@ function extractLastDrawId(htmlText) {
 
 }
 
-function onFulfill(body) {
-    var data = extractNumbers(body);
+function onFulfill(body, writer) {
+    var data = htmlParser.extractNumbers(body);
+    if (!data || data.drawId === 0) {
+        console.log('Upload successful!  Server responded with:', sortList(result));
+        return;
+    }
     var numbers = _.pick(data, '0', '1', '2', '3', '4', '5');
     countNumbers(result, numbers);
-    if (data.drawId > 0) {
-        var params = _.pick(data, 'gameId', 'drawId', 'dayPrize');
-        params.type = 0;
-        getNumbers(request, params, result);
-    } else {
-        console.log('Upload successful!  Server responded with:', sortList(result));
-    }
+    var params = _.pick(data, 'gameId', 'drawId', 'dayPrize');
+    params.type = 0;
+    getNumbers(request, params, result);
 }
 
 function onReject(error) {
     return console.error('Unknown error: ', error);
 }
 
-function extractNumbers(htmlText) {
-    var numbers = {};
-    var dom = new JSDOM(htmlText).window.document;
-
-    domParams = dom.querySelector('a[data-gameid], a[data-drawid], a[data-dayprize]');
-    numbers.gameId = domParams.getAttribute('data-gameid');
-    numbers.drawId = domParams.getAttribute('data-drawid');
-    numbers.dayPrize = domParams.getAttribute('data-dayprize');
-
-    var i = 0;
-    _.each(dom.querySelectorAll('li:not([class="arrow-result"])'), function(item) {
-        numbers[i++] = item.innerHTML;
-    });
-
-    return numbers;
-}
-
 function countNumbers(frequency, numbers) {
     var keys = _.keys(numbers);
     _.each(keys, function(item) {
-        frequency[item] = _.contains(_.keys(frequency), numbers[item]) ?
-        frequency[item] + 1 : 1;
+        frequency[numbers[item]] = _.contains(_.keys(frequency), numbers[item]) ?
+        frequency[numbers[item]] + 1 : 1;
     });
 }
 
